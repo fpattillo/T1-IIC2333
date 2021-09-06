@@ -3,6 +3,7 @@
 #include <string.h> // strtok, strcpy, etc.
 #include <stdlib.h> // malloc, calloc, free, etc.
 #include <signal.h>
+#include <sys/wait.h>
 
 // Import the header file of this module, because it has the struct declaration
 #include "manager.h"
@@ -124,4 +125,42 @@ void send_signal_with_int(int pid, int payload)
   union sigval sig = {};
   sig.sival_int = payload;
   sigqueue(pid, SIGUSR1, sig);
+}
+
+void alarm_handler(int signum)
+{
+  char *filename = "input.txt";
+  InputFile *data_in = read_file(filename);
+  char* distancia_semaforo1 = data_in->lines[0][0];
+  char* distancia_semaforo2 = data_in->lines[0][1];
+  char* distancia_semaforo3 = data_in->lines[0][2];
+  char* distancia_bodega = data_in->lines[0][3];
+  array_repartidores = malloc(sizeof(pid_t)* atoi(data_in -> lines[1][1]));
+  input_file_destroy(data_in);
+
+  printf("Inside handler function\n");
+  pid_t pid_repartidor = fork();
+      if (pid_repartidor == 0){
+        char* args[]={"./repartidor", distancia_semaforo1, distancia_semaforo2, distancia_semaforo3, distancia_bodega, NULL};
+        execv(args[0], args);
+      } else {
+        array_repartidores[rep_count] = pid_repartidor;
+        rep_count++;
+      }
+}
+
+void child_handle_sigint(int signum)
+{
+  kill(getppid(), SIGINT); // le pasa la senal a su padre hasta llegar al proceso principal, encargado de abortar todo.
+}
+
+
+void parent_handle_sigint(int signum)
+{
+  int child_pids[] = {pid_fabrica, pid_s1, pid_s2, pid_s3};
+  for (int i = 0; i < 4; i++)
+  {
+    kill(child_pids[i], SIGABRT);
+  }
+  wait(NULL);
 }

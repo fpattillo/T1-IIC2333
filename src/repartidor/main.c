@@ -1,50 +1,120 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <stdbool.h>
-#include <string.h>
 #include <stdlib.h>
-#include <signal.h>
+#include <math.h>
+
 #include "../file_manager/manager.h"
 
-int semaforos[3] = {0,0,0};
-int stats[4] = {0,0,0,0};
+int indice_repartidor;
+int semaforos[3] = {1,1,1};
+int stats[4] = {-1,-1,-1,-1};
 
-int check_in_array(int value, int* array, int len_array){
-  for (int x=1; x<= len_array; x++){
-    if (value == array[x-1]){
-      return x;
-    }
+void file_write()
+{
+  char filename[20];
+  sprintf(filename, "repartidor_%i.txt", indice_repartidor);
+  FILE *output = fopen(filename, "w");
+
+  for (int i = 0; i < 4; i++)
+  {
+    fprintf(output, "%i", stats[i]);
+    // No agregamos el separador al último número
+    if (i + 1 != 4)
+      fprintf(output, ",");
   }
-  return 0;
+
+  // Se cierra el archivo (si no hay leak)
+  fclose(output);
+
+  // Terminamos el programa con exit code 0
+  exit(0);
 }
 
-void handle_sigusr1(int sig, siginfo_t *siginfo, void *context){
-  //recibe señal de la fabrica y actualiza status de los semaforos
+void handle_abort(int signum)
+{
+  file_write();
+}
+
+void rep_handle_sigusr1(int signum, siginfo_t *siginfo, void *context)
+{
   int number_received = siginfo->si_value.sival_int;
-  printf("Hijo: Recibi %i\n", number_received);
-  semaforos[number_received/3] = number_received - (number_received/3 * 3);
+  if (number_received < 0)
+  {
+    semaforos[abs(number_received) - 1] = 0;
+  }
+  else if (number_received > 0)
+  {
+    semaforos[abs(number_received) - 1] = 1;
+  }
 }
 
 int main(int argc, char const *argv[])
 {
-  int array_dis[4] = {atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4])};
-  int pos=0;
-  int turno=0;
-  connect_sigaction(SIGUSR1, handle_sigusr1);
-  printf("I'm the REPARTIDOR process and my PID is: %i\n", getpid());
-  while(pos < array_dis[3]){ /// poner condicion de meta
-  ///recibir señal de estados de semaforos (hacer un if) ///
-    if (check_in_array(pos + 1, array_dis, 4)){
-      printf("NEXT IS A STOP\n");
-      // checkear si el semaforo esta en rojo
-    } else if (check_in_array(pos, array_dis, 4)) {
-      printf("IN STOP\n");
-      stats[check_in_array(pos, array_dis, 4)] = turno;
-    }
-    pos++;
-    turno++;
+  printf("REPARTIDOR PID %i\n", getpid());
+  connect_sigaction(SIGUSR1, rep_handle_sigusr1);
+  signal(SIGABRT, handle_abort);
+  signal(SIGINT, child_handle_sigint);
+  indice_repartidor = getpid();
+  int posicion = 0;
+  int turno = 0;
+  int distancia_semaforo1 = atoi(argv[1]);
+  int distancia_semaforo2 = atoi(argv[2]);
+  int distancia_semaforo3 = atoi(argv[3]);
+  int distancia_bodega = atoi(argv[4]);
+  while (posicion < distancia_bodega)
+  {
     sleep(1);
+    turno++;
+    if ( (posicion + 1) == distancia_semaforo1 )
+    {
+      if (semaforos[0] == 1)
+      {
+        posicion++; //avanza
+        stats[0] = turno; //se registra lo que se demoro
+        printf("REPARTIDOR %i AVANZA A %i (S1)\n", getpid(), posicion);
+      }
+      else
+      {
+        printf("REPARTIDOR %i ESPERA S1\n", getpid());
+      }
+    }
+    else if ( (posicion + 1) == distancia_semaforo2 )
+    {
+      if (semaforos[1] == 1)
+      {
+        posicion++;
+        stats[1] = turno;
+        printf("REPARTIDOR %i AVANZA A %i (S2)\n", getpid(), posicion);
+      }
+      else
+      {
+        printf("REPARTIDOR %i ESPERA S2\n", getpid());
+      }
+    }
+    else if ( (posicion + 1) == distancia_semaforo3 )
+    {
+      if (semaforos[2] == 1)
+      {
+        posicion++;
+        stats[2] = turno;
+        printf("REPARTIDOR %i AVANZA A %i (S3)\n", getpid(), posicion);
+      }
+      else
+      {
+        printf("REPARTIDOR %i ESPERA S3\n", getpid());
+      }
+    }
+    else if ( (posicion + 1) == distancia_bodega )
+    {
+      posicion++;
+      stats[3] = turno;
+      printf("REPARTIDOR %i AVANZA A %i (BODEGA)\n", getpid(), posicion);
+      file_write();
+    }
+    else
+    {
+      posicion++;
+      printf("REPARTIDOR %i AVANZA A %i\n", getpid(), posicion);
+    }
   }
-  printf("%i TERMINO \n", getpid());
-  ///enviar señal de termino de ruta
 }
