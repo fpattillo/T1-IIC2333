@@ -51,10 +51,6 @@ void handle_sigusr1(int signum, siginfo_t *siginfo, void *context)
   {
     printf("AAAAAA PID %i\n", number_received);
     waitpid(number_received, 0, 0);
-    if (number_received == array_repartidores[sizeof(array_repartidores)/sizeof(array_repartidores[0]) - 1])
-    {
-      wait(NULL);
-    }
     term_repartidores++;
     printf("TERMINADOS %i\n", term_repartidores);
   }
