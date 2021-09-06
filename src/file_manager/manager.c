@@ -135,13 +135,13 @@ void alarm_handler(int signum)
   char* distancia_semaforo2 = data_in->lines[0][1];
   char* distancia_semaforo3 = data_in->lines[0][2];
   char* distancia_bodega = data_in->lines[0][3];
-  array_repartidores = malloc(sizeof(pid_t)* atoi(data_in -> lines[1][1]));
   input_file_destroy(data_in);
-
-  printf("Inside handler function\n");
+  char indice_rep[2];
+  sprintf(indice_rep, "%i", rep_count);
   pid_t pid_repartidor = fork();
       if (pid_repartidor == 0){
-        char* args[]={"./repartidor", distancia_semaforo1, distancia_semaforo2, distancia_semaforo3, distancia_bodega, NULL};
+        char* args[]={"./repartidor", distancia_semaforo1, distancia_semaforo2, distancia_semaforo3, distancia_bodega, indice_rep, NULL};
+        signal(SIGUSR1, SIG_IGN);
         execv(args[0], args);
       } else {
         array_repartidores[rep_count] = pid_repartidor;

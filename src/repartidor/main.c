@@ -12,7 +12,7 @@ int stats[4] = {-1,-1,-1,-1};
 void file_write()
 {
   char filename[20];
-  sprintf(filename, "repartidor_%i.txt", indice_repartidor);
+  sprintf(filename, "repartidor_%i.txt", indice_repartidor + 1);
   FILE *output = fopen(filename, "w");
 
   for (int i = 0; i < 4; i++)
@@ -50,11 +50,12 @@ void rep_handle_sigusr1(int signum, siginfo_t *siginfo, void *context)
 
 int main(int argc, char const *argv[])
 {
-  printf("REPARTIDOR PID %i\n", getpid());
+  printf("REPARTIDOR %i\n", getpid());
   connect_sigaction(SIGUSR1, rep_handle_sigusr1);
   signal(SIGABRT, handle_abort);
   signal(SIGINT, child_handle_sigint);
-  indice_repartidor = getpid();
+  int indice = atoi(argv[5]);
+  indice_repartidor = indice;
   int posicion = 0;
   int turno = 0;
   int distancia_semaforo1 = atoi(argv[1]);
@@ -71,11 +72,11 @@ int main(int argc, char const *argv[])
       {
         posicion++; //avanza
         stats[0] = turno; //se registra lo que se demoro
-        printf("REPARTIDOR %i AVANZA A %i (S1)\n", getpid(), posicion);
+        printf("REPARTIDOR %i [%i] AVANZA A %i (S1)\n", indice, getpid(), posicion);
       }
       else
       {
-        printf("REPARTIDOR %i ESPERA S1\n", getpid());
+        printf("REPARTIDOR %i [%i] ESPERA S1\n", indice, getpid());
       }
     }
     else if ( (posicion + 1) == distancia_semaforo2 )
@@ -84,11 +85,11 @@ int main(int argc, char const *argv[])
       {
         posicion++;
         stats[1] = turno;
-        printf("REPARTIDOR %i AVANZA A %i (S2)\n", getpid(), posicion);
+        printf("REPARTIDOR %i [%i] AVANZA A %i (S2)\n", indice, getpid(), posicion);
       }
       else
       {
-        printf("REPARTIDOR %i ESPERA S2\n", getpid());
+        printf("REPARTIDOR %i [%i] ESPERA S2\n", indice, getpid());
       }
     }
     else if ( (posicion + 1) == distancia_semaforo3 )
@@ -97,24 +98,25 @@ int main(int argc, char const *argv[])
       {
         posicion++;
         stats[2] = turno;
-        printf("REPARTIDOR %i AVANZA A %i (S3)\n", getpid(), posicion);
+        printf("REPARTIDOR %i [%i] AVANZA A %i (S3)\n", indice, getpid(), posicion);
       }
       else
       {
-        printf("REPARTIDOR %i ESPERA S3\n", getpid());
+        printf("REPARTIDOR %i [%i] ESPERA S3\n", indice, getpid());
       }
     }
     else if ( (posicion + 1) == distancia_bodega )
     {
       posicion++;
       stats[3] = turno;
-      printf("REPARTIDOR %i AVANZA A %i (BODEGA)\n", getpid(), posicion);
+      printf("REPARTIDOR %i [%i] AVANZA A %i (BODEGA)\n", indice, getpid(), posicion);
+      send_signal_with_int(getppid(), (int) getpid());
       file_write();
     }
     else
     {
       posicion++;
-      printf("REPARTIDOR %i AVANZA A %i\n", getpid(), posicion);
+      printf("REPARTIDOR %i [%i] AVANZA A %i\n", indice, getpid(), posicion);
     }
   }
 }
